@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -33,7 +34,6 @@ func (p Products) AddProduct(w http.ResponseWriter, r *http.Request) {
 	p.l.Println("Handle POST requests")
 
 	prod := r.Context().Value(KeyProduct{}).(*data.Product)
-
 	data.AddProduct(prod)
 }
 
@@ -65,6 +65,12 @@ func (p Products) ValidateProduct(next http.Handler) http.Handler {
 		err := prod.FromJSON(r.Body)
 		if err != nil {
 			http.Error(w, "Unable to Unmarshall JSON", http.StatusBadRequest)
+			return
+		}
+
+		err = prod.Validate()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Unable to Validate product: %s", err), http.StatusBadRequest)
 			return
 		}
 
