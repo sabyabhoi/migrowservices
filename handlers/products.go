@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	"github.com/sabyabhoi/microservices/data"
 )
@@ -31,10 +32,18 @@ func (p *Products) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		re := regexp.MustCompile(`/([0-9]+)`)
 		group := re.FindAllStringSubmatch(r.URL.Path, -1)
 
-		if len(group) != 1 {
+		if len(group) != 1 || len(group[0]) != 2 {
 			http.Error(w, "Invalid URI", http.StatusBadRequest)
 			return
 		}
+		id, err := strconv.Atoi(group[0][1])
+		if err != nil {
+			http.Error(w, "Invalid URI", http.StatusBadRequest)
+			return
+		}
+
+		p.updateProducts(id, w, r)
+		return
 	}
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
@@ -51,7 +60,7 @@ func (p *Products) getProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Products) addProducts(w http.ResponseWriter, r *http.Request) {
-	p.l.Println("Handle Post requests")
+	p.l.Println("Handle POST requests")
 
 	prod := &data.Product{}
 	err := prod.FromJSON(r.Body)
@@ -60,4 +69,21 @@ func (p *Products) addProducts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data.AddProduct(prod)
+}
+
+func (p *Products) updateProducts(id int, w http.ResponseWriter, r *http.Request) {
+	p.l.Println("Handle PUT requests")
+
+	prod := &data.Product{}
+	err := prod.FromJSON(r.Body)
+	if err != nil {
+		http.Error(w, "Unable to Unmarshall JSON", http.StatusBadRequest)
+		return
+	}
+
+	err = data.UpdateProduct(id, prod)
+	if err != nil {
+		http.Error(w, "Unable to update product", http.StatusBadRequest)
+		return
+	}
 }
